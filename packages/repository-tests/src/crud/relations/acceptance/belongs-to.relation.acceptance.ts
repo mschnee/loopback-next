@@ -10,7 +10,7 @@ import {
   EntityNotFoundError,
   Getter,
 } from '@loopback/repository';
-import {expect, toJSON} from '@loopback/testlab';
+import { expect, toJSON } from '@loopback/testlab';
 import {
   deleteAllModelsInDefaultDataSource,
   withCrudCtx,
@@ -29,7 +29,7 @@ import {
   Shipment,
   ShipmentRepository,
 } from '../fixtures/models';
-import {givenBoundCrudRepositories} from '../helpers';
+import { givenBoundCrudRepositories } from '../helpers';
 
 export function belongsToRelationAcceptance(
   dataSourceOptions: DataSourceOptions,
@@ -49,7 +49,7 @@ export function belongsToRelationAcceptance(
 
     before(
       withCrudCtx(async function setupRepository(ctx: CrudTestContext) {
-        ({customerRepo, orderRepo, shipmentRepo} = givenBoundCrudRepositories(
+        ({ customerRepo, orderRepo, shipmentRepo } = givenBoundCrudRepositories(
           ctx.dataSource,
           repositoryClass,
           features,
@@ -76,17 +76,18 @@ export function belongsToRelationAcceptance(
       // adding parentId to customer so MySQL doesn't complain about null vs
       // undefined
       expect(toJSON(result)).to.deepEqual(
-        toJSON({...customer, parentId: features.emptyValue}),
+        toJSON({ ...customer, parentId: features.emptyValue }),
       );
     });
 
     it('can find shipment of order with a custom foreign key name', async () => {
       const shipment = await shipmentRepo.create({
         name: 'Tuesday morning shipment',
+        // eslint-disable-next-line @typescript-eslint/camelcase
+        shipment_id: 999,
       });
       const order = await orderRepo.create({
-        // eslint-disable-next-line @typescript-eslint/camelcase
-        shipment_id: shipment.id,
+        shipmentInfo: shipment.shipment_id,
         description: 'Order that is shipped Tuesday morning',
       });
       const result = await orderRepo.shipment(order.id);

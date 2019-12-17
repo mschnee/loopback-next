@@ -3,7 +3,7 @@
 // This file is licensed under the MIT License.
 // License text available at https://opensource.org/licenses/MIT
 
-import {expect, toJSON} from '@loopback/testlab';
+import { expect, toJSON } from '@loopback/testlab';
 import _ from 'lodash';
 import {
   CrudFeatures,
@@ -21,8 +21,9 @@ import {
   CustomerRepository,
   Order,
   OrderRepository,
+  ShipmentRepository,
 } from '../fixtures/models';
-import {givenBoundCrudRepositories} from '../helpers';
+import { givenBoundCrudRepositories } from '../helpers';
 
 export function hasManyRelationAcceptance(
   dataSourceOptions: DataSourceOptions,
@@ -33,11 +34,12 @@ export function hasManyRelationAcceptance(
     before(deleteAllModelsInDefaultDataSource);
     let customerRepo: CustomerRepository;
     let orderRepo: OrderRepository;
+    let shipmentRepo: ShipmentRepository;
     let existingCustomerId: MixedIdType;
 
     before(
       withCrudCtx(async function setupRepository(ctx: CrudTestContext) {
-        ({customerRepo, orderRepo} = givenBoundCrudRepositories(
+        ({ customerRepo, orderRepo, shipmentRepo } = givenBoundCrudRepositories(
           ctx.dataSource,
           repositoryClass,
           features,
@@ -49,6 +51,7 @@ export function hasManyRelationAcceptance(
     beforeEach(async () => {
       await customerRepo.deleteAll();
       await orderRepo.deleteAll();
+      await shipmentRepo.deleteAll();
     });
 
     beforeEach(async () => {
@@ -72,8 +75,7 @@ export function hasManyRelationAcceptance(
         toJSON({
           ...order,
           isShipped: features.emptyValue,
-          // eslint-disable-next-line @typescript-eslint/camelcase
-          shipment_id: features.emptyValue,
+          shipmentInfo: features.emptyValue,
         }),
       );
     });
@@ -90,17 +92,51 @@ export function hasManyRelationAcceptance(
       expect(toJSON(foundOrders)).to.containEql(
         toJSON({
           ...order,
-          // eslint-disable-next-line @typescript-eslint/camelcase
-          shipment_id: features.emptyValue,
+          shipmentInfo: features.emptyValue,
           isShipped: features.emptyValue,
         }),
       );
       expect(toJSON(foundOrders)).to.not.containEql(toJSON(notMyOrder));
 
       const persisted = await orderRepo.find({
-        where: {customerId: existingCustomerId},
+        where: { customerId: existingCustomerId },
       });
       expect(toJSON(persisted)).to.deepEqual(toJSON(foundOrders));
+    });
+
+    it('can find an instance of the related model with non-id property as a source key(keyFrom)', async () => {
+      const shipment = await shipmentRepo.create({
+        name: 'non-id prop as keyFrom relation',
+        // eslint-disable-next-line @typescript-eslint/camelcase
+        shipment_id: 999,
+      });
+      const order = await orderRepo.create({
+        shipmentInfo: shipment.shipment_id,
+        description: 'foreign key not id property',
+      });
+
+      const found = await shipmentRepo
+        .shipmentOrders(order.shipmentInfo)
+        .find();
+
+      expect(toJSON(found)).containDeep(
+        toJSON([
+          {
+            ...order,
+            isShipped: features.emptyValue,
+            customerId: features.emptyValue,
+          },
+        ]),
+      );
+
+      const persisted = await orderRepo.findById(order.id);
+      expect(toJSON(persisted)).to.deepEqual(
+        toJSON({
+          ...order,
+          isShipped: features.emptyValue,
+          customerId: features.emptyValue,
+        }),
+      );
     });
 
     it('can patch many instances', async () => {
@@ -112,7 +148,7 @@ export function hasManyRelationAcceptance(
         description: 'order 2',
         isShipped: false,
       });
-      const patchObject = {isShipped: true};
+      const patchObject = { isShipped: true };
       const arePatched = await patchCustomerOrders(
         existingCustomerId,
         patchObject,
@@ -194,11 +230,11 @@ export function hasManyRelationAcceptance(
         customerRepo.createAll([
           {
             name: 'a customer',
-            orders: [{description: 'order 1'}],
+            orders: [{ description: 'order 1' }],
           },
           {
             name: 'a customer',
-            address: {street: '1 Amedee Bonnet'},
+            address: { street: '1 Amedee Bonnet' },
           },
         ]),
       ).to.be.rejectedWith(
@@ -207,14 +243,14 @@ export function hasManyRelationAcceptance(
     });
 
     it('throws when the instance contains navigational property when operates update()', async () => {
-      const created = await customerRepo.create({name: 'customer'});
+      const created = await customerRepo.create({ name: 'customer' });
       await orderRepo.create({
         description: 'pizza',
         customerId: created.id,
       });
 
       const found = await customerRepo.findById(created.id, {
-        include: [{relation: 'orders'}],
+        include: [{ relation: 'orders' }],
       });
       expect(found.orders).to.have.lengthOf(1);
 
@@ -225,30 +261,30 @@ export function hasManyRelationAcceptance(
     });
 
     it('throws when the instancees contain navigational property when operates updateAll()', async () => {
-      await customerRepo.create({name: 'Mario'});
-      await customerRepo.create({name: 'Luigi'});
+      await customerRepo.create({ name: 'Mario' });
+      await customerRepo.create({ name: 'Luigi' });
 
       await expect(
         customerRepo.updateAll({
           name: 'Nintendo',
-          orders: [{description: 'Switch'}],
+          orders: [{ description: 'Switch' }],
         }),
       ).to.be.rejectedWith(/Navigational properties are not allowed.*"orders"/);
     });
 
     it('throws when the instance contains navigational property when operates updateById()', async () => {
-      const customer = await customerRepo.create({name: 'Mario'});
+      const customer = await customerRepo.create({ name: 'Mario' });
 
       await expect(
         customerRepo.updateById(customer.id, {
           name: 'Luigi',
-          orders: [{description: 'Nintendo'}],
+          orders: [{ description: 'Nintendo' }],
         }),
       ).to.be.rejectedWith(/Navigational properties are not allowed.*"orders"/);
     });
 
     it('throws when the instance contains navigational property when operates delete()', async () => {
-      const customer = await customerRepo.create({name: 'customer'});
+      const customer = await customerRepo.create({ name: 'customer' });
 
       await orderRepo.create({
         description: 'pizza',
@@ -256,7 +292,7 @@ export function hasManyRelationAcceptance(
       });
 
       const found = await customerRepo.findById(customer.id, {
-        include: [{relation: 'orders'}],
+        include: [{ relation: 'orders' }],
       });
 
       await expect(customerRepo.delete(found)).to.be.rejectedWith(
@@ -266,7 +302,7 @@ export function hasManyRelationAcceptance(
 
     context('when targeting the source model', () => {
       it('gets the parent entity through the child entity', async () => {
-        const parent = await customerRepo.create({name: 'parent customer'});
+        const parent = await customerRepo.create({ name: 'parent customer' });
 
         const child = await customerRepo.create({
           name: 'child customer',
@@ -279,13 +315,13 @@ export function hasManyRelationAcceptance(
       });
 
       it('creates a child entity through the parent entity', async () => {
-        const parent = await customerRepo.create({name: 'parent customer'});
+        const parent = await customerRepo.create({ name: 'parent customer' });
         const child = await createCustomerChildren(parent.id, {
           name: 'child customer',
         });
 
-        expect(toJSON({parentId: child.parentId})).to.eql(
-          toJSON({parentId: parent.id}),
+        expect(toJSON({ parentId: child.parentId })).to.eql(
+          toJSON({ parentId: parent.id }),
         );
 
         const children = await findCustomerChildren(parent.id);
@@ -335,7 +371,7 @@ export function hasManyRelationAcceptance(
     }
 
     async function givenPersistedCustomerInstance() {
-      return customerRepo.create({name: 'a customer'});
+      return customerRepo.create({ name: 'a customer' });
     }
   });
 }

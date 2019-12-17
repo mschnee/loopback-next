@@ -265,6 +265,54 @@ export class Order extends Entity {
 }
 ```
 
+If you need to use another attribute other than the id property to be the source
+key, customizing `keyFrom` field would allow you to do so:
+
+```ts
+export class Customer extends Entity {
+  @property({
+    type: 'number',
+    id: true,
+  })
+  id: number;
+
+  // if you'd like to use this property as the source id
+  // of a certain relation that relates to a model `Foo`
+  @property({
+    type: 'number',
+  })
+  anotherKey: number;
+
+  @hasMany(() => Foo, {keyFrom: 'anotherKey'})
+  foos?: Foo[];
+
+  @hasMany(() => Order)
+  orders?: Order[];
+
+  // ..constructor
+  }
+}
+```
+
+Notice that if you decorate the corresponding foreign key of the target model
+with `@belongsTo`, you also need to specify the `keyTo` field of its relation
+metadata. See [BelongsTo](BelongsTo-relation.md#relation-metadata) for more
+details.
+
+```ts
+// import statements
+@model()
+export class Foo extends Entity {
+  // constructor, properties, etc.
+
+  // specify the keyTo if the source key is not the id property
+  @belongsTo(() => Customer, {keyTo: 'anotherKey'})
+  customerId: number; // default foreign key name
+}
+```
+
+{% include important.html content="LB4 doesn't support composite keys for now. e.g join two tables with more than one source key. Related GitHub issues: [Composite primary/foreign keys](https://github.com/strongloop/loopback-next/issues/1830)" %}
+
 If you need to use _different names for models and database columns_, to use
 `my_orders` as db column name other than `orders` for example, the following
 setting would allow you to do so:
@@ -664,5 +712,5 @@ The `Where` clause above filters the result of `orders`.
 {% include tip.html content="Make sure that you have all inclusion resolvers that you need REGISTERED, and
 all relation names should be UNIQUE."%}
 
-{% include important.html content="There are some limitations of inclusion:. <br/><br/> We don’t support recursive inclusion of related models. Related GH issue: [Recursive inclusion of related models](https://github.com/strongloop/loopback-next/issues/3454). <br/><br/> It doesn’t split numbers of queries. Related GH issue: [Support inq splitting](https://github.com/strongloop/loopback-next/issues/3444). <br/><br/> It might not work well with ObjectId of MongoDB. Related GH issue: [Spike: robust handling of ObjectID type for MongoDB](https://github.com/strongloop/loopback-next/issues/3456).
+{% include important.html content="There are some limitations of inclusion:. <br/> We don’t support recursive inclusion of related models. Related GH issue: [Recursive inclusion of related models](https://github.com/strongloop/loopback-next/issues/3454). <br/> It doesn’t split numbers of queries. Related GH issue: [Support inq splitting](https://github.com/strongloop/loopback-next/issues/3444). <br/> It might not work well with ObjectId of MongoDB. Related GH issue: [Spike: robust handling of ObjectID type for MongoDB](https://github.com/strongloop/loopback-next/issues/3456).
 " %}
