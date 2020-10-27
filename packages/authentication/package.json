@@ -25,6 +25,7 @@
   },
   "peerDependencies": {
     "@loopback/core": "^2.11.0",
+    "@loopback/openapi-v3": "^5.0.0",
     "@loopback/rest": "^8.0.0"
   },
   "dependencies": {
@@ -39,6 +40,7 @@
     "@loopback/core": "^2.11.0",
     "@loopback/eslint-config": "^10.0.1",
     "@loopback/openapi-spec-builder": "^3.0.0",
+    "@loopback/openapi-v3": "^5.0.0",
     "@loopback/rest": "^8.0.0",
     "@loopback/testlab": "^3.2.7",
     "@types/node": "^10.17.35",
